@@ -9,11 +9,22 @@ import Appointment from "./pages/Appointment.jsx";
 import MyProfile from "./pages/MyProfile.jsx";
 import Navbar from "./components/Navbar.jsx";
 import Footer from "./components/Footer.jsx";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 function App() {
   return (
     <div className="bg-white ">
       <div className="mx-4 sm:mx-[10%]">
+        <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          closeOnClick
+          pauseOnHover={false}
+          draggable
+          limit={2}
+        />
         <Navbar />
         <Routes>
           <Route path="/" element={<Home />} />

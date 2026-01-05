@@ -1,18 +1,67 @@
-import { useState } from "react";
+import { useContext, useEffect, useState } from "react";
+import { AppContext } from "../context/allContext";
+import axios from "axios";
+import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
 
-function Login() {
+const Login = () => {
+  const { backendUrl, token, setToken } = useContext(AppContext);
   const [state, setState] = useState("Sign Up");
+
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
+
+  const navigate = useNavigate();
 
   const onSubmitHandler = async (event) => {
     event.preventDefault();
+    try {
+      if (state === "Sign Up") {
+        const { data } = await axios.post(
+          backendUrl + "/api/v1/user/register",
+          {
+            name,
+            email,
+            password,
+          }
+        );
+        console.log(data);
+        if (data.success) {
+          localStorage.setItem("token", data.data.token);
+          setToken(data.data.token);
+          toast.success(data.message);
+        }
+      } else {
+        const { data } = await axios.post(backendUrl + "/api/v1/user/login", {
+          email,
+          password,
+        });
+
+        if (data.success) {
+          localStorage.setItem("token", data.data.token);
+          setToken(data.data.token);
+          toast.success(data.message);
+        }
+      }
+    } catch (e) {
+      if (e.status < 500) {
+        toast.error(e.response.data.message);
+      } else {
+        toast.error("Server Error");
+      }
+    }
   };
+
+  useEffect(() => {
+    if (token) {
+      navigate("/");
+    }
+  }, [navigate, token]);
 
   return (
     <form onSubmit={onSubmitHandler} className="min-h-[80vh] flex items-center">
-      <div className="flex flex-col gap-3 m-auto items-start p-8 min-w-[340px] sm:min-w-96 border rounded-xl text-[#5E5E5E] text-sm shadow-lg">
+      <div className="flex flex-col gap-3 m-auto items-start p-8 min-w-85 sm:min-w-96 border rounded-xl text-[#5E5E5E] text-sm shadow-lg">
         <p className="text-2xl font-semibold">
           {state === "Sign Up" ? "Create Account" : "Login"}
         </p>
@@ -60,7 +109,7 @@ function Login() {
         </button>
         {state === "Sign Up" ? (
           <p>
-            Already have an account?
+            Already have an account?{" "}
             <span
               onClick={() => setState("Login")}
               className="text-primary underline cursor-pointer"
@@ -70,7 +119,7 @@ function Login() {
           </p>
         ) : (
           <p>
-            Create a new account?
+            Create an new account?{" "}
             <span
               onClick={() => setState("Sign Up")}
               className="text-primary underline cursor-pointer"
@@ -82,6 +131,6 @@ function Login() {
       </div>
     </form>
   );
-}
+};
 
 export default Login;

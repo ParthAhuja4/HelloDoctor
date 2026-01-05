@@ -1,20 +1,19 @@
-import { useContext, useEffect, useState } from "react";
-import { AppContext } from "../context/AppContext";
+import { useContext, useMemo } from "react";
+import { AppContext } from "../context/allContext";
 import { useNavigate } from "react-router-dom";
 
 function RelatedDoctors({ speciality, docId }) {
   const { doctors } = useContext(AppContext);
   const navigate = useNavigate();
-  const [relDoc, setRelDoc] = useState([]);
 
-  useEffect(() => {
-    if (doctors.length > 0 && speciality) {
-      const drData = doctors.filter(
-        (doc) => doc.speciality === speciality && doc._id != docId
+  const relDoc = useMemo(() => {
+    if (doctors && doctors.length > 0 && speciality) {
+      return doctors.filter(
+        (doc) => doc.speciality === speciality && doc._id !== docId
       );
-      setRelDoc(drData);
     }
-  }, [docId, speciality, doctors]);
+    return [];
+  }, [doctors, speciality, docId]);
 
   return (
     <div className="flex flex-col items-center gap-4 my-16 text-gray-900 md:mx-10">
@@ -28,7 +27,7 @@ function RelatedDoctors({ speciality, docId }) {
             key={index}
             onClick={() => {
               navigate(`/appointment/${item._id}`);
-              scrollTo(0, 0);
+              window.scrollTo(0, 0);
             }}
             className="border border-blue-200 rounded-xl overflow-hidden cursor-pointer hover:-translate-y-2.5 duration-500"
           >
@@ -47,7 +46,7 @@ function RelatedDoctors({ speciality, docId }) {
       <button
         onClick={() => {
           navigate("/doctors");
-          scrollTo(0, 0);
+          window.scrollTo(0, 0);
         }}
         className="bg-blue-50 text-gray-600 px-12 py-3 rounded-full mt-5 cursor-pointer"
       >

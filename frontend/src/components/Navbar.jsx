@@ -1,118 +1,105 @@
+import { useContext, useState } from "react";
+import { assets } from "../assets/assets";
 import { NavLink, useNavigate } from "react-router-dom";
-import { assets } from "../assets/assets.js";
-import { useState } from "react";
+import { AppContext } from "../context/allContext";
 
-function Navbar() {
+const Navbar = () => {
   const navigate = useNavigate();
-  const [showMenu, setMenu] = useState(false);
-  const [token, setToken] = useState(true);
-  const [open, setOpen] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const { token, setToken, userData } = useContext(AppContext);
+
+  const logout = () => {
+    localStorage.removeItem("token");
+    setToken(false);
+    scrollTo(0, 0);
+    navigate("/login");
+  };
 
   return (
-    <div className="flex items-center justify-between text-sm py-4 mb-5 border-b border-b-gray-400">
-      <img
-        onClick={() => {
-          navigate("/");
-          scrollTo(0, 0);
-        }}
-        src={assets.logo}
-        alt="Logo"
-        className="w-32 h-15 scale-200 object-cover object-bottom pl-7 cursor-pointer"
-      />
+    <div className="flex items-center justify-between text-sm pt-2 pb-0 border-b border-b-gray-400">
+      <div className="w-40 h-28 overflow-hidden">
+        <img
+          onClick={() => {
+            scrollTo(0, 0);
+            navigate("/");
+          }}
+          src={assets.logo || "/fallback-logo.png"}
+          alt="Logo"
+          className="w-full h-full object-cover object-center cursor-pointer"
+        />
+      </div>
 
       <ul className="hidden md:flex items-start gap-5 font-medium">
-        <li className="flex flex-col items-center">
-          <NavLink to="/">
-            {({ isActive }) => (
-              <>
-                HOME
-                <hr
-                  className={`h-0.5 w-3/5 mt-1 bg-primary transition-all ${
-                    isActive ? "block" : "hidden"
-                  }`}
-                />
-              </>
-            )}
+        <li className="pb-0.5">
+          <NavLink
+            to="/"
+            className={({ isActive }) =>
+              isActive ? "border-b-2 border-primary" : ""
+            }
+          >
+            HOME
           </NavLink>
         </li>
-        <li className="flex flex-col items-center">
-          <NavLink to="/doctors">
-            {({ isActive }) => (
-              <>
-                ALL DOCTORS
-                <hr
-                  className={`h-0.5 w-3/5 mt-1 bg-primary transition-all ${
-                    isActive ? "block" : "hidden"
-                  }`}
-                />
-              </>
-            )}
+        <li className="pb-0.5">
+          <NavLink
+            to="/doctors"
+            className={({ isActive }) =>
+              isActive ? "border-b-2 border-primary" : ""
+            }
+          >
+            ALL DOCTORS
           </NavLink>
         </li>
-        <li className="flex flex-col items-center">
-          <NavLink to="/about">
-            {({ isActive }) => (
-              <>
-                ABOUT
-                <hr
-                  className={`h-0.5 w-3/5 mt-1 bg-primary transition-all ${
-                    isActive ? "block" : "hidden"
-                  }`}
-                />
-              </>
-            )}
+        <li className="pb-0.5">
+          <NavLink
+            to="/about"
+            className={({ isActive }) =>
+              isActive ? "border-b-2 border-primary" : ""
+            }
+          >
+            ABOUT
           </NavLink>
         </li>
-        <li className="flex flex-col items-center">
-          <NavLink to="/contact">
-            {({ isActive }) => (
-              <>
-                CONTACT
-                <hr
-                  className={`h-0.5 w-3/5 mt-1 bg-primary transition-all ${
-                    isActive ? "block" : "hidden"
-                  }`}
-                />
-              </>
-            )}
+        <li className="pb-0.5">
+          <NavLink
+            to="/contact"
+            className={({ isActive }) =>
+              isActive ? "border-b-2 border-primary" : ""
+            }
+          >
+            CONTACT
           </NavLink>
         </li>
       </ul>
-      <div className="flex items-center gap-4">
-        {token ? (
-          <div
-            className="flex items-center gap-2 cursor-pointer relative"
-            onClick={() => setOpen(!open)}
-          >
-            <img
-              src={assets.profile_pic}
-              alt="Profile Pic"
-              className="w-12 rounded-full"
-            />
-            <img src={assets.dropdown_icon} alt="Dropdown" className="w-2.5" />
 
-            <div
-              className={`absolute top-0 right-0 pt-14 text-base font-medium text-gray-600 z-20 ${
-                open ? "block" : "hidden"
-              }`}
-            >
+      <div className="flex items-center gap-4">
+        {token && userData ? (
+          <div className="flex items-center gap-2 cursor-pointer group relative">
+            <img
+              className="w-12 rounded-full"
+              src={userData.image || "/fallback-user.png"}
+              alt="profile"
+            />
+            <img
+              className="w-2.5"
+              src={assets.dropdown_icon || "/fallback-icon.png"}
+              alt="dropdown"
+            />
+            <div className="absolute top-0 right-0 pt-14 text-base font-medium text-gray-600 z-20 hidden group-hover:block">
               <div className="min-w-48 bg-stone-100 rounded flex flex-col gap-4 p-4">
                 <p
+                  onClick={() => navigate("my-profile")}
                   className="hover:text-black cursor-pointer"
-                  onClick={() => navigate("/my-profile")}
                 >
                   My Profile
                 </p>
                 <p
+                  onClick={() => navigate("my-appointments")}
                   className="hover:text-black cursor-pointer"
-                  onClick={() => navigate("/my-appointments")}
                 >
                   My Appointments
                 </p>
-                <p
-                  className="hover:text-black cursor-pointer"
-                  onClick={() => setToken(false)}
-                >
+                <p onClick={logout} className="hover:text-black cursor-pointer">
                   Logout
                 </p>
               </div>
@@ -120,22 +107,21 @@ function Navbar() {
           </div>
         ) : (
           <button
-            onClick={() => {
-              navigate("/login");
-            }}
-            className="bg-primary text-white px-8 py-3 rounded-full font-light hidden md:block cursor-pointer"
+            onClick={() => navigate("/login")}
+            className="bg-primary text-white px-8 py-3 rounded-full font-light hidden md:block"
           >
             Create Account
           </button>
         )}
+
         <img
-          src={assets.menu_icon}
-          alt="menu"
+          onClick={() => setShowMenu(true)}
           className="w-6 md:hidden"
-          onClick={() => {
-            setMenu(true);
-          }}
+          src={assets.menu_icon}
+          alt=""
         />
+
+        {/* ---- Mobile Menu ---- */}
         <div
           className={`md:hidden ${
             showMenu ? "fixed w-full" : "h-0 w-0"
@@ -144,23 +130,23 @@ function Navbar() {
           <div className="flex items-center justify-between px-5 py-6">
             <img src={assets.logo} className="w-36" alt="" />
             <img
-              onClick={() => setMenu(false)}
+              onClick={() => setShowMenu(false)}
               src={assets.cross_icon}
               className="w-7"
               alt=""
             />
           </div>
           <ul className="flex flex-col items-center gap-2 mt-5 px-5 text-lg font-medium">
-            <NavLink onClick={() => setMenu(false)} to="/">
+            <NavLink onClick={() => setShowMenu(false)} to="/">
               <p className="px-4 py-2 rounded full inline-block">HOME</p>
             </NavLink>
-            <NavLink onClick={() => setMenu(false)} to="/doctors">
+            <NavLink onClick={() => setShowMenu(false)} to="/doctors">
               <p className="px-4 py-2 rounded full inline-block">ALL DOCTORS</p>
             </NavLink>
-            <NavLink onClick={() => setMenu(false)} to="/about">
+            <NavLink onClick={() => setShowMenu(false)} to="/about">
               <p className="px-4 py-2 rounded full inline-block">ABOUT</p>
             </NavLink>
-            <NavLink onClick={() => setMenu(false)} to="/contact">
+            <NavLink onClick={() => setShowMenu(false)} to="/contact">
               <p className="px-4 py-2 rounded full inline-block">CONTACT</p>
             </NavLink>
           </ul>
@@ -168,6 +154,6 @@ function Navbar() {
       </div>
     </div>
   );
-}
+};
 
 export default Navbar;

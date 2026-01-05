@@ -7,10 +7,10 @@ const uploadOnCloudinary = async (localFilePath) => {
     const response = await cloudinary.uploader.upload(localFilePath, {
       resource_type: "image",
     });
-    fs.unlinkSync(localFilePath);
+    await fs.promises.unlink(localFilePath);
     return response;
   } catch (error) {
-    fs.unlinkSync(localFilePath);
+    await fs.promises.unlink(localFilePath);
     return null;
   }
 };

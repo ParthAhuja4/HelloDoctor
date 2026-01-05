@@ -1,25 +1,72 @@
-import { useState } from "react";
+import { useContext, useState } from "react";
+import { AppContext } from "../context/allContext";
+import axios from "axios";
+import { toast } from "react-toastify";
 import { assets } from "../assets/assets";
 
-function MyProfile() {
-  const [userData, setUserData] = useState({
-    name: "Edward Vincet",
-    image: assets.profile_pic,
-    email: "patientev@gmail.com",
-    phone: "+91 9999999999",
-    address: {
-      line1: "57th Cross, Richmond ",
-      line2: "Circle, Church Road, London",
-      gender: "Male",
-      dob: "2000-01-20",
-    },
-  });
+const MyProfile = () => {
+  const [isEdit, setIsEdit] = useState(false);
+  const [image, setImage] = useState(false);
 
-  const [isEdit, setEdit] = useState(false);
+  const { token, backendUrl, userData, setUserData, loadUserProfileData } =
+    useContext(AppContext);
 
-  return (
-    <div>
-      <img src={userData.image} alt="" />
+  const updateUserProfileData = async () => {
+    try {
+      const formData = new FormData();
+      formData.append("name", userData.name);
+      formData.append("phone", userData.phone);
+      formData.append("address", JSON.stringify(userData.address));
+      formData.append("gender", userData.gender);
+      formData.append("dob", userData.dob);
+      image && formData.append("image", image);
+
+      const { data } = await axios.post(
+        backendUrl + "/api/v1/user/update-profile",
+        formData,
+        { headers: { token } }
+      );
+
+      if (data.success) {
+        toast.success(data.message);
+        await loadUserProfileData();
+        setIsEdit(false);
+        setImage(false);
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+  return userData ? (
+    <div className="max-w-lg flex flex-col gap-2 text-sm pt-5">
+      {isEdit ? (
+        <label htmlFor="image">
+          <div className="inline-block relative cursor-pointer">
+            <img
+              className="w-36 rounded opacity-75"
+              src={image ? URL.createObjectURL(image) : userData.image}
+              alt=""
+            />
+            <img
+              className="w-10 absolute bottom-12 right-12"
+              src={image ? "" : assets.upload_icon}
+              alt=""
+            />
+          </div>
+          <input
+            onChange={(e) => setImage(e.target.files[0])}
+            type="file"
+            id="image"
+            hidden
+          />
+        </label>
+      ) : (
+        <img className="w-36 rounded" src={userData.image} alt="" />
+      )}
+
       {isEdit ? (
         <input
           className="bg-gray-50 text-3xl font-medium max-w-60"
@@ -34,7 +81,9 @@ function MyProfile() {
           {userData.name}
         </p>
       )}
+
       <hr className="bg-[#ADADAD] h-px border-none" />
+
       <div>
         <p className="text-gray-600 underline mt-3">CONTACT INFORMATION</p>
         <div className="grid grid-cols-[1fr_3fr] gap-y-2.5 mt-3 text-[#363636]">
@@ -89,6 +138,7 @@ function MyProfile() {
           )}
         </div>
       </div>
+
       <div>
         <p className="text-[#797979] underline mt-3">BASIC INFORMATION</p>
         <div className="grid grid-cols-[1fr_3fr] gap-y-2.5 mt-3 text-gray-600">
@@ -124,21 +174,18 @@ function MyProfile() {
           )}
         </div>
       </div>
+
       <div className="mt-10">
         {isEdit ? (
           <button
-            onClick={() => {
-              setEdit(false);
-            }}
+            onClick={updateUserProfileData}
             className="border border-primary px-8 py-2 rounded-full hover:bg-primary hover:text-white transition-all"
           >
             Save information
           </button>
         ) : (
           <button
-            onClick={() => {
-              setEdit(true);
-            }}
+            onClick={() => setIsEdit(true)}
             className="border border-primary px-8 py-2 rounded-full hover:bg-primary hover:text-white transition-all"
           >
             Edit
@@ -146,7 +193,7 @@ function MyProfile() {
         )}
       </div>
     </div>
-  );
-}
+  ) : null;
+};
 
 export default MyProfile;

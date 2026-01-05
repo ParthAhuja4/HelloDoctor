@@ -7,6 +7,10 @@ import Doctor from "../models/doctor.model.js";
 import ApiResponse from "../utils/apiResponse.js";
 import jwt from "jsonwebtoken";
 import fs from "fs";
+import Appointment from "../models/appointment.model.js";
+import { stripe } from "./user.controller.js";
+import mongoose from "mongoose";
+import User from "../models/user.model.js";
 
 export const addDoctor = asyncHandler(async (req, res) => {
   const {
@@ -21,6 +25,9 @@ export const addDoctor = asyncHandler(async (req, res) => {
     address,
   } = req.body;
 
+  if (!req?.file?.path) {
+    throw new ApiError(400, "Missing Details. Enter All details");
+  }
   if (
     !name ||
     !email ||
@@ -30,32 +37,22 @@ export const addDoctor = asyncHandler(async (req, res) => {
     !experience ||
     !about ||
     !fees ||
-    !address ||
-    !req?.file?.path
+    !address
   ) {
-    fs.unlinkSync(req?.file?.path);
+    await fs.promises.unlink(req.file.path);
     throw new ApiError(400, "Missing Details. Enter All details");
-  }
-  const existedDr = await Doctor.findOne({
-    email,
-  });
-
-  if (existedDr) {
-    fs.unlinkSync(req.file.path);
-    throw new ApiError(409, "Dr with email already exists");
   }
 
   if (!validator.isEmail(email)) {
-    fs.unlinkSync(req.file.path);
+    await fs.promises.unlink(req.file.path);
     throw new ApiError(422, "Invalid Email");
   }
 
   if (!validator.isStrongPassword(password)) {
-    fs.unlinkSync(req.file.path);
+    await fs.promises.unlink(req.file.path);
     throw new ApiError(422, "Try a stronger password");
   }
-  const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash(password, salt);
+  const hashedPassword = await bcrypt.hash(password, 10);
   const uploadedImage = await uploadOnCloudinary(req.file.path);
 
   if (!uploadedImage) {
@@ -74,19 +71,14 @@ export const addDoctor = asyncHandler(async (req, res) => {
     address: JSON.parse(address),
     date: Date.now(),
   });
-  const createdDoctor = await Doctor.findById(doctor._id).select("-password");
-  if (!createdDoctor) {
-    throw new ApiError(
-      500,
-      "Something went wrong while registering the doctor"
-    );
-  }
+
+  const doctorObj = doctor.toObject();
+  delete doctorObj.password;
+  delete doctorObj.__v;
 
   return res
     .status(201)
-    .json(
-      new ApiResponse(201, createdDoctor, "Doctor registered Successfully")
-    );
+    .json(new ApiResponse(201, doctorObj, "Doctor registered Successfully"));
 });
 
 export const loginAdmin = asyncHandler(async (req, res) => {
@@ -96,20 +88,117 @@ export const loginAdmin = asyncHandler(async (req, res) => {
     email != process.env.ADMIN_EMAIL ||
     password != process.env.ADMIN_PASSWORD
   ) {
-    throw new ApiError(401, "Wrong Email or Password");
+    throw new ApiError(401, "Invalid Credentials");
   }
-
-  const options = {
-    httpOnly: true,
-    secure: true,
-  };
 
   const token = jwt.sign({ email, password }, process.env.JWT_SECRET, {
     expiresIn: process.env.ADMIN_ACCESS_TOKEN_EXPIRY,
   });
 
-  res
+  return res
     .status(200)
-    .cookie("accessToken", token, options)
-    .json(new ApiResponse(200, {}, "Admin Logged In"));
+    .json(new ApiResponse(200, { token }, "Admin Logged In"));
+});
+
+export const allDoctors = asyncHandler(async (_, res) => {
+  const allDrs = await Doctor.find({}).select("-password");
+  if (!allDrs) throw new ApiError(404, "No Doctors Data");
+  return res.status(200).json(new ApiResponse(200, allDrs, "Fetched"));
+});
+
+export const allAppointments = asyncHandler(async (_, res) => {
+  const appointmentsList = await Appointment.find({});
+  res.status(200).json(new ApiResponse(200, appointmentsList, "Fetched"));
+});
+
+export const cancelAppointment = asyncHandler(async (req, res) => {
+  const { appointmentId } = req.body;
+
+  // Fetch appointment (outside transaction)
+  const appointment = await Appointment.findById(appointmentId);
+
+  if (!appointment) {
+    throw new ApiError(404, "Appointment not found");
+  }
+
+  if (appointment.status === "cancelled") {
+    return res
+      .status(200)
+      .json(new ApiResponse(200, {}, "Appointment already cancelled"));
+  }
+
+  // If CONFIRMED : initiate refund FIRST
+  let refund;
+  if (appointment.status === "confirmed") {
+    if (!appointment.paymentIntentId) {
+      throw new ApiError(400, "Payment reference missing");
+    }
+
+    refund = await stripe.refunds.create({
+      payment_intent: appointment.paymentIntentId,
+      reason: "requested_by_customer",
+    });
+  }
+
+  //Atomic DB update (cancel + slot release)
+  const session = await mongoose.startSession();
+  try {
+    session.startTransaction();
+
+    await Appointment.findByIdAndUpdate(
+      appointmentId,
+      {
+        status: "cancelled",
+        refundedAt: appointment.status === "confirmed" ? new Date() : null,
+        refundId: refund?.id,
+      },
+      { session }
+    );
+
+    await Doctor.findByIdAndUpdate(
+      appointment.docId,
+      {
+        $pull: {
+          [`slots_booked.${appointment.slotDate}`]: appointment.slotTime,
+        },
+      },
+      { session }
+    );
+
+    await session.commitTransaction();
+
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          refundId: refund?.id || null,
+        },
+        appointment.status === "confirmed"
+          ? "Appointment cancelled and refunded"
+          : "Appointment cancelled"
+      )
+    );
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
+});
+
+export const adminDashboard = asyncHandler(async (req, res) => {
+  const doctors = await Doctor.find({});
+  const users = await User.find({});
+  const appointments = await Appointment.find({});
+
+  const dashData = {
+    doctors: doctors.length,
+    appointments: appointments.length,
+    patients: users.length,
+    latestAppointments: appointments.reverse().slice(0, 5),
+  };
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, dashData, "Dashboard Data Fetched"));
 });
