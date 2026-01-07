@@ -33,8 +33,8 @@ Payment processing in distributed systems is prone to "state drift," where a cli
 ```mermaid
 graph TD
     subgraph Client_Side [Client Layer]
-        Patient[Patient Portal<br/>(React + Vite)]
-        Admin[Admin Dashboard<br/>(React + Vite)]
+        Patient["Patient Portal<br/>(React + Vite)"]
+        Admin["Admin Dashboard<br/>(React + Vite)"]
     end
 
     subgraph Server_Side [Backend Layer]
