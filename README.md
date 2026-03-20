@@ -2,6 +2,9 @@
 
 **HelloDoctor** is a **high-fidelity, distributed healthcare orchestration engine** designed to modernize clinical workflows through a robust digital infrastructure. Architected for **horizontal scalability** and **fault tolerance**, this platform bridges the gap between medical providers and patients via a secure, real-time interface, ensuring data consistency and operational efficiency across the healthcare continuum.
 
+## Demonstration
+![Demonstration GIF](./helloDoctorImg.gif)
+
 ## 🎯 Problem & Solution Framing
 
 ### Problem 1 — The Fragmentation Crisis & Operational Latency
