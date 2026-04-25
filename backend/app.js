@@ -8,11 +8,16 @@ const app = express();
 app.post(
   "/stripe/webhook",
   bodyParser.raw({ type: "application/json" }),
-  stripeWebhook
+  stripeWebhook,
 );
 
 app.use(express.json());
-app.use(cors());
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL,
+    credentials: true, // needed if you're sending cookies
+  }),
+);
 app.use(express.static("public"));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
